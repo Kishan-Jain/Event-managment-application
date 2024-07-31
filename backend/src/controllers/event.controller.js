@@ -182,7 +182,7 @@ export const deleteEvent = asyncHandler(async (req, res) => {
   return res.status(200).json(200, {}, "Event Deleted successfully");
 });
 
-export const fatchWeatherInfo = asyncHandler(async (req, res) => {
+export const fetchWeatherInfo = asyncHandler(async (req, res) => {
   // for fetch wetherInfo I use open wether map
 
   const eventId = req.params?._id;
@@ -210,11 +210,11 @@ export const fatchWeatherInfo = asyncHandler(async (req, res) => {
   }
 
   const location = retrievedEvent.location
-  const eventWetherInfo = "wether information here"
-  
+  const fetchWeatherInfo = "wether information here"
+
   return res
   .status(200)
   .json(
-    new ApiResponse(200, eventWetherInfo, "Event whether info get successfully")
+    new ApiResponse(200, fetchWeatherInfo, "Event whether info get successfully")
   )
 });

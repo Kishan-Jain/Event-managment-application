@@ -29,16 +29,16 @@ userRouter
 // Route to update user information
 userRouter
   .route("/update/:userId")
-  .post(CheckUserLogin, RegenerateAccessToken, updateUserInfo);
+  .patch(CheckUserLogin, RegenerateAccessToken, updateUserInfo);
 
 // Route to change user password
 userRouter
   .route("/changepassword/:userId")
-  .post(CheckUserLogin, RegenerateAccessToken, changePassword);
+  .patch(CheckUserLogin, RegenerateAccessToken, changePassword);
 
 // Route to delete a user
 userRouter
   .route("/deleteuser/:userId")
-  .post(CheckUserLogin, RegenerateAccessToken, deleteUser);
+  .delete(CheckUserLogin, RegenerateAccessToken, deleteUser);
 
 export default userRouter; // Exporting the router to be used in other parts of the application
