@@ -32,7 +32,7 @@ export const CheckUserLogin = asyncHandler(async (req, res, next) => {
           process.env.REFRESH_TOKEN_SECRET
         );
       } catch (error) {
-        throw new ApiError(500, "Unable to decode refresh token");
+        throw new ApiError(500, error.message || "Unable to decode refresh token");
       }
 
       // If the refreshToken is invalid, throw an error
@@ -44,7 +44,7 @@ export const CheckUserLogin = asyncHandler(async (req, res, next) => {
       res.json({ Warning: "Your access token has expired, please refresh it" });
 
       // Set the userId from the decoded refreshToken
-      req.userId = decodeValue.userId;
+      req.userId = decodeValue._id;
       return next();
     }
 
@@ -56,10 +56,10 @@ export const CheckUserLogin = asyncHandler(async (req, res, next) => {
       // Verify the accessToken using the secret key
       decodeValue = await jwt.verify(
         accessToken,
-        process.env.ACCESS_TOKEN_SECRET
+        process.env.ACCESS_TOKEN_SECRET_KEY
       );
     } catch (error) {
-      throw new ApiError(500, "Unable to decode access token");
+      throw new ApiError(500, error.message || "Unable to decode access token");
     }
 
     // If the accessToken is invalid, throw an error
@@ -68,8 +68,8 @@ export const CheckUserLogin = asyncHandler(async (req, res, next) => {
     }
 
     // Set the userId from the decoded accessToken
-    req.userId = decodeValue.userId;
-    return next();
+    req.userId = decodeValue._id;
+    next();
   } catch (error) {
     // Handle any errors that occur during the process
     throw new ApiError(500, error.message || "Unable to check user : ChackUserLogin middleware faild");
@@ -89,7 +89,7 @@ export const CheckForLogin = asyncHandler(async (req, res, next) => {
         }
       }
       // Proceed to the next middleware or route handler if no login cookies are found
-      return next();
+      next();
     } catch (error) {
       // Handle any errors that occur during the process
       throw new ApiError(500, error.message || "Unable to check login : chackForLogin middleware faild");

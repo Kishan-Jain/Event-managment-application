@@ -17,7 +17,7 @@ eventRouter.route("/createEvent").post(CheckUserLogin, createEvent);
 eventRouter.route("/getAllEvents").get(CheckUserLogin, getAllEvents);
 
 // Route to update an event by its ID, requires user to be logged in
-eventRouter.route("/updateEvent/:_id").patch(CheckUserLogin, updateEvent);
+eventRouter.route("/updateEventInfo/:_id").patch(CheckUserLogin, updateEvent);
 
 // Route to delete an event by its ID, requires user to be logged in
 eventRouter.route("/deleteEvent/:_id").delete(CheckUserLogin, deleteEvent);

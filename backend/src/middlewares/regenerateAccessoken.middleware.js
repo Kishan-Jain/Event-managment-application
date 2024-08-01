@@ -42,6 +42,6 @@ export const RegenerateAccessToken = asyncHandler(async (req, res, next) => {
         return next();
         
     } catch (error) {
-        throw new ApiError(500, error || "Unable to regenate AccessToken : RegenrateAccessToken middleware faild")       
+        throw new ApiError(500, error.message || "Unable to regenate AccessToken : RegenrateAccessToken middleware faild")       
     }  
 });

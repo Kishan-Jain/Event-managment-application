@@ -11,6 +11,7 @@
     "management",
     "backend"
   ],
+  "type" : "module",
   "author": "kishan jain",
   "license": "ISC",
   "description": "",

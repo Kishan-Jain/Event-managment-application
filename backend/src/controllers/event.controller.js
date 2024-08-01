@@ -179,7 +179,8 @@ export const deleteEvent = asyncHandler(async (req, res) => {
     throw new ApiError(500, error.message || "Unable to delete Event");
   }
 
-  return res.status(200).json(200, {}, "Event Deleted successfully");
+  return res.status(200).json(
+    new ApiResponse(200, {}, "Event Deleted successfully"));
 });
 
 export const fetchWeatherInfo = asyncHandler(async (req, res) => {

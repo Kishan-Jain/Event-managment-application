@@ -1,11 +1,13 @@
 import { Router } from "express";
 import {
-  changePassword,
+  changePasswordForLoginUser,
+  changePasswordWithoutLogin,
   deleteUser,
   loginUser,
   logoutUser,
   registerUser,
-  updateUserInfo,
+  updateEmail,
+  updateFullName,
 } from "../controllers/user.controller.js"; // Importing controller functions
 import {
   CheckForLogin,
@@ -27,18 +29,27 @@ userRouter
   .post(CheckUserLogin, RegenerateAccessToken, logoutUser);
 
 // Route to update user information
+
 userRouter
-  .route("/update/:userId")
-  .patch(CheckUserLogin, RegenerateAccessToken, updateUserInfo);
+  .route("/updateEmail/:userId")
+  .patch(CheckUserLogin, RegenerateAccessToken, updateEmail);
+
+userRouter
+  .route("/updateFullName/:userId")
+  .patch(CheckUserLogin, RegenerateAccessToken, updateFullName);
 
 // Route to change user password
 userRouter
-  .route("/changepassword/:userId")
-  .patch(CheckUserLogin, RegenerateAccessToken, changePassword);
+  .route("/changePasswordForLoginUser/:userId")
+  .patch(CheckUserLogin, RegenerateAccessToken, changePasswordForLoginUser);
+
+userRouter
+  .route("/changePasswordWithoutLogin")
+  .patch(changePasswordWithoutLogin);
 
 // Route to delete a user
 userRouter
-  .route("/deleteuser/:userId")
+  .route("/deleteUser/:userId")
   .delete(CheckUserLogin, RegenerateAccessToken, deleteUser);
 
 export default userRouter; // Exporting the router to be used in other parts of the application

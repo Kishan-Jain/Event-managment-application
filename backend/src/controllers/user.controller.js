@@ -15,25 +15,26 @@ import GenerateAccessRefreshToken from "../utils/getAccessRefressTokens.js";
 
 export const registerUser = asyncHandler(async (req, res) => {
   // Extract user details from the request body
+
   const { userName, fullName, email, password } = req.body;
 
   // Check if any of the required fields are empty
   if (
     [userName, fullName, email, password].some(
-      (field) => field.toString().trim() === ""
+      (field) => field?.toString().trim() === ""
     )
   ) {
     throw new ApiError(400, "Data not received");
   }
+  // Check if username already exists
+  if (await User.findOne({ userName })) {
+    throw new ApiError(409, "Username already exists");
+  }
 
   let createdUser;
-  try {
-    // Save the user details in the database
-    createdUser = await User.create({ userName, fullName, email, password });
-  } catch (error) {
-    // Handle errors during user creation
-    throw new ApiError(500, error.message || "User saving failed");
-  }
+
+  // Save the user details in the database
+  createdUser = await User.create({ userName, fullName, email, password });
 
   // Check if the user was successfully created
   if (!createdUser) {
@@ -53,7 +54,7 @@ export const registerUser = asyncHandler(async (req, res) => {
 
   // Check if the user was successfully retrieved
   if (!searchNewUser) {
-    throw new ApiError(500, "User not found");
+    throw new ApiError(404, "User not found");
   }
 
   // Send a success response with the newly registered user details
@@ -64,13 +65,13 @@ export const registerUser = asyncHandler(async (req, res) => {
 
 export const loginUser = asyncHandler(async (req, res) => {
   // Extract user details from the request body
-  const { userName, password } = req.body;
+  let { userName, password } = req.body;
 
   // Check if any of the required fields are empty
   if ([userName, password].some((field) => field?.toString().trim() === "")) {
     throw new ApiError(400, "Data not received");
   }
-
+  
   let searchUser;
   try {
     // Find user by userName, excluding refreshToken and __v fields
@@ -82,7 +83,7 @@ export const loginUser = asyncHandler(async (req, res) => {
 
   // Check if user exists
   if (!searchUser) {
-    throw new ApiError(500, "UserName does not exist");
+    throw new ApiError(404, "UserName does not exist");
   }
 
   // Verify if the provided password is correct
@@ -105,7 +106,7 @@ export const loginUser = asyncHandler(async (req, res) => {
       {
         $set: {
           refreshToken: refreshToken,
-          lastLogin: Date.now, // Update last login date
+          lastLogin: Date.now(), // Update last login date
         },
       },
       {
@@ -159,16 +160,15 @@ export const logoutUser = asyncHandler(async (req, res) => {
       userId,
       {
         $set: {
-          refreshToken: undefined, // Clear the refresh token
+          refreshToken: null, // Clear the refresh token
           lastLogout: Date.now(), // Set the last logout time to current time
-          lastSessionTime: Date.now() - searchUser.lastLogin, // Calculate the last session time
         },
       },
       { new: true } // Return the updated document
-    ).select("_id userName email lastLogout lastSessionTime");
+    ).select("-password -__v");
   } catch (error) {
     // Handle error if user update fails
-    throw new ApiError(500, error || "Unable to Update User");
+    throw new ApiError(500, error.message || "Unable to Update User");
   }
 
   // Check if user update was successful
@@ -196,12 +196,12 @@ export const logoutUser = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, searchUser, "User Logout successfully"));
 });
 
-export const updateUserInfo = asyncHandler(async (req, res) => {
+export const updateEmail = asyncHandler(async (req, res) => {
   // For Update, the user must be logged in. This is checked using middleware,
   // which returns userId from cookies, and we search for the user by this ID.
 
-  const newData = req.body;
-  if (!newData) {
+  const { newEmail } = req.body;
+  if (!newEmail) {
     throw new ApiError(400, error || "Not data received");
   }
 
@@ -213,10 +213,10 @@ export const updateUserInfo = asyncHandler(async (req, res) => {
   let updateUser;
   try {
     // Update the user's information
-    updateUser = User.findByIdAndUpdate(
+    updateUser = await User.findByIdAndUpdate(
       userId,
       {
-        $set: newData,
+        $set: { email: newEmail },
       },
       { new: true }
     ).select("-password -refreshToken -__v"); // Exclude sensitive fields
@@ -233,10 +233,52 @@ export const updateUserInfo = asyncHandler(async (req, res) => {
   // Return a successful response
   return res
     .status(200)
-    .json(new ApiResponse(202, updateUser, "user data updated"));
+    .json(new ApiResponse(202, updateUser, "user email updated successfully"));
 });
 
-export const changePassword = asyncHandler(async (req, res) => {
+export const updateFullName = asyncHandler(async (req, res) => {
+  // For Update, the user must be logged in. This is checked using middleware,
+  // which returns userId from cookies, and we search for the user by this ID.
+
+  const { newName } = req.body;
+  if (!newName) {
+    throw new ApiError(400, error || "Not data received");
+  }
+
+  const userId = req.userId;
+  if (!userId) {
+    throw new ApiError(500, error || "UserId not received");
+  }
+
+  let updateUser;
+  try {
+    // Update the user's information
+    updateUser = await User.findByIdAndUpdate(
+      userId,
+      {
+        $set: { fullName: newName },
+      },
+      { new: true }
+    ).select("-password -refreshToken -__v"); // Exclude sensitive fields
+  } catch (error) {
+    // Handle any errors that occur during the update
+    throw new ApiError(500, "unable to update User");
+  }
+
+  // Check if the update was successful
+  if (!updateUser) {
+    throw new ApiError(500, error || "User Not updated");
+  }
+
+  // Return a successful response
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(202, updateUser, "User Full Name updated successfully")
+    );
+});
+
+export const changePasswordForLoginUser = asyncHandler(async (req, res) => {
   // For changePassword, the user must be logged in. This is checked using middleware,
   // which returns userId from cookies, and we search for the user by this ID.
 
@@ -250,18 +292,31 @@ export const changePassword = asyncHandler(async (req, res) => {
     throw new ApiError(500, error || "UserId not received");
   }
 
+  let searchUser;
+  try {
+    // Find the user by their ID, excluding the password, refreshToken, and __v fields
+    searchUser = await User.findById(userId).select(
+      "-password -refreshToken -__v"
+    );
+
+  } catch (error) {
+    throw new ApiError(500, "Enable to find User")
+  }
+  if(!searchUser){
+    throw new ApiError(400, "User not Found")
+  }
   let updateUser;
   try {
-    // Update the user's password
-    updateUser = User.findByIdAndUpdate(
-      userId,
-      {
-        $set: {
-          password: newPassword,
-        },
-      },
-      { new: true }
-    ).select("_id _password");
+    
+    // Update the user's password with the new password
+    searchUser.password = newPassword;
+
+    // Save the updated user information to the database
+    await searchUser.save();
+
+    // Retrieve the updated user information, selecting only the _id and password fields
+    updateUser = await User.findById(searchUser._id).select("_id password");
+
   } catch (error) {
     // Handle any errors that occur during the update
     throw new ApiError(500, error || "Unable to updated Password");
@@ -278,7 +333,63 @@ export const changePassword = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, updateUser, "PassWord changes"));
 });
 
-export const deletedUser = asyncHandler(async (req, res) => {
+export const changePasswordWithoutLogin = asyncHandler(async (req, res) => {
+  // For changePassword, the user must be logged in. This is checked using middleware,
+  // which returns userId from cookies, and we search for the user by this ID.
+
+  const { userId, newPassword, oldPassword } = req.body;
+  if (
+    [userId, newPassword, oldPassword].some(
+      (field) => field?.toString().trim() === ""
+    )
+  ) {
+    throw new ApiError(400, error || "No data receive");
+  }
+
+  let searchUser;
+  try {
+    searchUser = await User.findById(userId).select(
+      " -refreshToken -__v"
+    );
+  } catch (error) {
+    throw new ApiError(500, error.message || "Enable to find user");
+  }
+  if (!searchUser) {
+    throw new ApiError(400, "user not found");
+  }
+
+  if (!searchUser.isPasswordCorrect(oldPassword)) {
+    throw new ApiError(400, "Incorrect Old Password");
+  }
+
+  let updateUser;
+  try {
+
+     // Update the user's password with the new password
+     searchUser.password = newPassword;
+
+     // Save the updated user information to the database
+     await searchUser.save();
+
+    // Retrieve the updated user information, selecting only the _id and password fields
+    updateUser = await User.findById(searchUser._id).select("_id password");
+  } catch (error) {
+    // Handle any errors that occur during the update
+    throw new ApiError(500, error || "Unable to updated Password");
+  }
+
+  // Check if the update was successful
+  if (!updateUser) {
+    throw new ApiError(500, error || "Password not updated");
+  }
+
+  // Return a successful response
+  return res
+    .status(200)
+    .json(new ApiResponse(200, updateUser, "PassWord changes"));
+});
+
+export const deleteUser = asyncHandler(async (req, res) => {
   // Ensure the user is logged in and userId is available
   const userId = req.userId;
   if (!userId) {
